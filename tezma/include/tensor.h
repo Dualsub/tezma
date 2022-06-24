@@ -11,6 +11,14 @@
 #include <sstream>
 #include "tezma.h"
 
+#ifdef max
+#undef max
+#endif
+
+#ifdef min
+#undef min
+#endif
+
 namespace tz
 {
 
@@ -260,6 +268,72 @@ namespace tz
          * @return A reference to the value at the given index.
          */
         Numeric &operator[](size_t i) { return m_data.get()[i]; }
+
+        Tensor<Numeric> slice(std::initializer_list<size_t> idxs) const
+        {
+            TZ_ASSERT(idxs.size() < m_shape.size() && "To many indexes.");
+
+            Tensor<Numeric> result(std::vector<size_t>(m_shape.begin() + idxs.size(), m_shape.end()));
+
+            // Linear index into array.
+            size_t idx = 0;
+
+            // Loop count.
+            size_t j = 0;
+
+            // Size of the current block.
+            size_t block_size = m_size;
+
+            for (auto &i : idxs)
+            {
+                // The block size if one if the shape does not exist, so no divide in that case.
+                block_size /= m_shape[j];
+                idx += i * block_size;
+                j++;
+            }
+
+            // Will be calculated from constructor.
+            size_t new_size = result.m_size;
+
+            // Copy data.
+            Numeric *dst = result.data();
+            Numeric *src = m_data.get();
+            memcpy_s(dst, new_size * sizeof(Numeric), src + idx, new_size * sizeof(Numeric));
+
+            return result;
+        }
+
+        void set_slice(const std::initializer_list<size_t> idxs, const Tensor &slice) const
+        {
+            TZ_ASSERT(idxs.size() < m_shape.size() && "To many indexes.");
+
+            // Linear index into array.
+            size_t idx = 0;
+
+            // Loop count.
+            size_t j = 0;
+
+            // Size of the current block.
+            size_t block_size = m_size;
+
+            for (auto &i : idxs)
+            {
+                // The block size if one if the shape does not exist, so no divide in that case.
+                block_size /= m_shape[j];
+
+                idx += i * block_size;
+
+                j++;
+            }
+
+            // Will be calculated from constructor.
+            size_t slice_size = slice.m_size;
+
+            // Copy data.
+            Numeric *dst = m_data.get();
+            Numeric *src = slice.data();
+            memcpy_s(dst + idx, slice_size * sizeof(Numeric), src, slice_size * sizeof(Numeric));
+        }
     };
 
 #pragma endregion
@@ -314,11 +388,40 @@ namespace tz
         return result;
     }
 
+    template <typename Numeric>
+    Tensor<bool> operator<(const Tensor<Numeric> &t, float f)
+    {
+        Tensor<bool> result(t.shape());
+        for (size_t i = 0; i < t.size(); i++)
+            result[i] = t[i] < f;
+
+        return result;
+    }
+
+    template <typename Numeric>
+    Tensor<bool> operator>(const Tensor<Numeric> &t, float f)
+    {
+        Tensor<bool> result(t.shape());
+        for (size_t i = 0; i < t.size(); i++)
+            result[i] = t[i] > f;
+
+        return result;
+    }
+
+    template <typename Numeric>
+    Tensor<bool> operator==(const Tensor<Numeric> &t, float f)
+    {
+        Tensor<bool> result(t.shape());
+        for (size_t i = 0; i < t.size(); i++)
+            result[i] = t[i] == f;
+
+        return result;
+    }
+
 #pragma endregion
 
 #pragma region Statistics
 
-    template <typename Numeric>
     /**
      * It takes a tensor and returns the mean of all the elements in the tensor
      *
@@ -326,6 +429,7 @@ namespace tz
      *
      * @return The mean of the tensor.
      */
+    template <typename Numeric>
     Numeric mean(const Tensor<Numeric> &t)
     {
         Numeric sum = 0;
@@ -337,7 +441,6 @@ namespace tz
         return sum / (Numeric)t.size();
     }
 
-    template <typename Numeric>
     /**
      * > It calculates the standard deviation of a tensor
      *
@@ -345,6 +448,7 @@ namespace tz
      *
      * @return The standard deviation of the tensor.
      */
+    template <typename Numeric>
     Numeric std(const Tensor<Numeric> &t)
     {
         Numeric mu = mean(t);
@@ -358,9 +462,83 @@ namespace tz
         return sqrt(sum / (Numeric)t.size());
     }
 
+    template <typename Numeric>
+    Numeric max(const Tensor<Numeric> &t)
+    {
+        Numeric max = 0;
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            if (t[i] > max)
+                max = t[i];
+        }
+
+        return max;
+    }
+
+    template <typename Numeric>
+    Numeric min(const Tensor<Numeric> &t)
+    {
+        Numeric min = (std::numeric_limits<Numeric>::max())();
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            if (t[i] < min)
+                min = t[i];
+        }
+
+        return min;
+    }
+
+    template <typename Numeric>
+    size_t argmax(const Tensor<Numeric> &t)
+    {
+        Numeric max = 0;
+        size_t index = 0;
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            if (t[i] > max)
+            {
+                max = t[i];
+                index = i;
+            }
+        }
+
+        return index;
+    }
+
+    template <typename Numeric>
+    Numeric argmin(const Tensor<Numeric> &t)
+    {
+        Numeric min = (std::numeric_limits<Numeric>::min())();
+        size_t index = 0;
+        for (size_t i = 0; i < t.size(); i++)
+        {
+            if (t[i] < min)
+            {
+                min = t[i];
+                index = i;
+            }
+        }
+
+        return index;
+    }
+
 #pragma endregion
 
 #pragma region Factories
+
+    /**
+     * It takes a list of sizes, and returns a tensor with those sizes, with empty memory.
+     *
+     * @param shape The shape of the tensor.
+     *
+     * @return A Tensor object.
+     */
+    template <typename Numeric>
+    Tensor<Numeric> empty(std::initializer_list<size_t> shape)
+    {
+        Tensor<Numeric> result(shape);
+        return result;
+    }
 
     /**
      * It creates a tensor with the given valuers
@@ -592,6 +770,49 @@ namespace tz
         }
 
         return result;
+    }
+
+#pragma endregion
+
+#pragma region Slicing
+
+    /**
+     * It returns the shape of the tensor that would result from broadcasting two tensors together.
+     * Returns an empy vector if they are not broadcastable.
+     *
+     * @param t1 The first tensor
+     * @param t2 The second tensor to be broadcasted.
+     *
+     * @return A vector of size_t's.
+     */
+    template <typename Numeric>
+    std::vector<size_t> broadcastable(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    {
+        if (t1.shape() == t2.shape())
+            return t1.shape();
+
+        std::vector<size_t> result_shape;
+
+        size_t order1 = t1.order();
+        size_t order2 = t2.order();
+        std::cout << "Order1: " << order1 << std::endl;
+        std::cout << "Order2: " << order2 << std::endl;
+        std::cout << "Order max: " << std::max(order1, order2) << std::endl;
+
+        for (size_t i = 1; i <= std::max(order1, order2); i++)
+        {
+            size_t shape1 = order1 >= i ? t1.shape(order1 - i) : 1;
+            size_t shape2 = order2 >= i ? t2.shape(order2 - i) : 1;
+
+            std::cout << "\t" << i << ": " << shape1 << ", " << shape2 << std::endl;
+
+            if (!(shape1 == shape2 || shape1 == 1 || shape2 == 1))
+                return std::vector<size_t>{};
+
+            result_shape.push_back(std::max(shape1, shape2));
+        }
+
+        return result_shape;
     }
 
 #pragma endregion

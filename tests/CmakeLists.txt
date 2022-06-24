@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.0.0)
+
+enable_testing()
+
+set(TZ_INCLUDE_DIRS "tezma/include")
+
+# indicates the location of the boost installation tree.
+# hard-coded for our simple example.
+set(BOOST_INCLUDE_DIRS "C:/Program Files/boost/boost_1_79_0/")
+
+# creates the executable
+add_executable(tensortest tensortest.cpp)
+target_include_directories(tensortest PRIVATE ${BOOST_INCLUDE_DIRS})
+add_test(NAME tensortest COMMAND tensortest)
+target_link_libraries(tensortest PRIVATE tezma)
+target_include_directories(tensortest PRIVATE ${TZ_INCLUDE_DIRS})
+
+
+add_executable(nettest nettest.cpp)
+target_include_directories(nettest PRIVATE ${BOOST_INCLUDE_DIRS})
+add_test(NAME nettest COMMAND nettest)
+target_link_libraries(nettest PRIVATE tezma)
+target_include_directories(nettest PRIVATE ${TZ_INCLUDE_DIRS})

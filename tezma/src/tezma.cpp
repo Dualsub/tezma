@@ -1,5 +1,6 @@
 #include "tensor.h"
 #include "function.h"
+#include "layer.h"
 #include <iostream>
 #include <chrono>
 
@@ -46,12 +47,5 @@ int main(int argc, char const *argv[])
     d.reshape({2, 1});
 
     std::cout << tz::squeeze(tz::randn<float>({4, 4})) << std::endl;
-
-    tz::TestFunction<float> func;
-    tz::Tensor<float> x = tz::randn<float>({4, 4});
-    x = func.forward(x);
-    x = func.backward(x);
-
-    std::cout << "x: " << x << std::endl;
     return 0;
 }

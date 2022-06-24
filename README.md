@@ -1,8 +1,10 @@
-# TEZMA 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/geohot/tinygrad/master/docs/logo.png">
+</p>
 
-## A C++ machine learning framework, created for no reason.
+--------------------------------------------------------------------
 
-Tezma is a small C++ machine learning framework containing the following features:
+Tezma is a small C++ machine learning framework, created for no reason. It includes the following features:
 - Small tensor math library(mirroring NumPy)
 - Layers(Linear, Conv2D)
 - Loss(Relu, Tanh)
@@ -11,6 +13,15 @@ Tezma is a small C++ machine learning framework containing the following feature
 - Serialization(saving and loading of net)
 
 Tezma was created for learning purposes.
+
+## Installation
+
+To install
+
+
+## Cmake linking
+
+Tezma supports static linking.
 
 ## Usage
 
