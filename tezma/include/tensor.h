@@ -379,13 +379,7 @@ namespace tz
     template <typename Numeric>
     Tensor<Numeric> operator+(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
     {
-        TZ_ASSERT(t1.shape() == t2.shape() && "Tensors do not have the same shape.");
-
-        Tensor<Numeric> result(t1.shape());
-        for (size_t i = 0; i < t1.size(); i++)
-            result[i] = t1[i] + t2[i];
-
-        return result;
+        return broadcast(t1, t2, [](Numeric a, Numeric b) { return a + b; });
     }
 
     template <typename Numeric>
@@ -416,6 +410,19 @@ namespace tz
             result[i] = t[i] == f;
 
         return result;
+    }
+
+    template <typename Numeric>
+    bool operator==(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    {
+        if (t1.shape() != t2.shape())
+            return false;
+
+        for (size_t i = 0; i < t1.size(); i++)
+            if (t1[i] == t2[i])
+                ;
+
+        return true;
     }
 
 #pragma endregion
@@ -716,7 +723,6 @@ namespace tz
         return result;
     }
 
-    template <typename Numeric>
     /**
      * > For each block of the result matrix, compute the dot product of the corresponding block of the
      * first matrix with the transpose of the corresponding block of the second matrix
@@ -726,44 +732,32 @@ namespace tz
      *
      * @return A tensor of the same shape as the first argument.
      */
-    Tensor<Numeric> matmul_tiled(Tensor<Numeric> &t1, Tensor<Numeric> &t2)
+    template <typename Numeric>
+    Tensor<Numeric> matmul_tiled(const Tensor<Numeric> t1, const Tensor<Numeric> &t2, const int block_size)
     {
         TZ_ASSERT((t1.order() == 2 && t2.order() == 2) && "Tensors are not matricies.");
         TZ_ASSERT((t1.shape(1) == t1.shape(0)) && "Matricies dimmensions are incompatible.");
 
-        const int block_size = 64 / sizeof(Numeric);
-        size_t N = t1.shape(0);
-        size_t M = t2.shape(1);
-        size_t K = t1.shape(1);
+        size_t rows = t1.shape(0);
+        size_t cols = t2.shape(1);
+        size_t m = t1.shape(1);
 
-        Tensor<Numeric> result = zeros<Numeric>({M, N});
-        for (size_t i0 = 0; i0 < N; i0 += block_size)
+        Tensor<Numeric> result = zeros<Numeric>({rows, cols});
+        for (size_t bi = 0; bi < rows; bi += block_size)
         {
-            size_t imax = i0 + block_size > N ? N : i0 + block_size;
-
-            for (size_t j0 = 0; j0 < M; j0 += block_size)
+            for (size_t bj = 0; bj < cols; bj += block_size)
             {
-                size_t jmax = j0 + block_size > M ? M : j0 + block_size;
-
-                for (size_t k0 = 0; k0 < K; k0 += block_size)
+                for (size_t i = bi; i < bi + block_size; i++)
                 {
-                    size_t kmax = k0 + block_size > K ? K : k0 + block_size;
-
-                    for (size_t j1 = j0; j1 < jmax; ++j1)
+                    for (size_t j = bj; j < bj + block_size; j++)
                     {
-                        size_t sj = M * j1;
-
-                        for (size_t i1 = i0; i1 < imax; ++i1)
+                        Numeric acc = 0;
+                        for (size_t k = 0; k < m; k++)
                         {
-                            size_t mi = M * i1;
-                            size_t ki = K * i1;
-                            size_t kij = ki + j1;
-
-                            for (size_t k1 = k0; k1 < kmax; ++k1)
-                            {
-                                result[kij] += t1[mi + k1] * t2[sj + k1];
-                            }
+                            acc += t1[i * m + k] * t2[k * cols + j];
                         }
+
+                        result[i * cols + j] = acc;
                     }
                 }
             }
@@ -774,45 +768,57 @@ namespace tz
 
 #pragma endregion
 
-#pragma region Slicing
+#pragma region Broadcasting
 
     /**
-     * It returns the shape of the tensor that would result from broadcasting two tensors together.
-     * Returns an empy vector if they are not broadcastable.
+     * It takes two tensors and a binary function, and returns a tensor that is the result of applying the
+     * function to each element of the two tensors
      *
-     * @param t1 The first tensor
-     * @param t2 The second tensor to be broadcasted.
+     * @param a The first tensor.
+     * @param b The second tensor.
+     * @param func The function to be applied to the tensors.
      *
-     * @return A vector of size_t's.
+     * @return A tensor with the result of the binary operation.
      */
-    template <typename Numeric>
-    std::vector<size_t> broadcastable(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    template <typename Numeric, typename Func>
+    Tensor<Numeric> broadcast(const Tensor<Numeric> &a, const Tensor<Numeric> &b, Func &&func)
     {
-        if (t1.shape() == t2.shape())
-            return t1.shape();
+        // Compute the shape of the result tensor.
 
-        std::vector<size_t> result_shape;
+        /* Calculating the shape of the output tensor. */
+        size_t block_size = 1;
+        std::vector<size_t> out_shape;
 
-        size_t order1 = t1.order();
-        size_t order2 = t2.order();
-        std::cout << "Order1: " << order1 << std::endl;
-        std::cout << "Order2: " << order2 << std::endl;
-        std::cout << "Order max: " << std::max(order1, order2) << std::endl;
-
-        for (size_t i = 1; i <= std::max(order1, order2); i++)
+        size_t P = std::max(a.order(), b.order());
+        for (size_t i = 0; i < P; i++)
         {
-            size_t shape1 = order1 >= i ? t1.shape(order1 - i) : 1;
-            size_t shape2 = order2 >= i ? t2.shape(order2 - i) : 1;
+            size_t a_shape = a.order() > i ? a.shape(a.order() - i - 1) : 1;
+            size_t b_shape = b.order() > i ? b.shape(b.order() - i - 1) : 1;
 
-            std::cout << "\t" << i << ": " << shape1 << ", " << shape2 << std::endl;
+            out_shape.insert(out_shape.begin(), std::max(a_shape, b_shape));
 
-            if (!(shape1 == shape2 || shape1 == 1 || shape2 == 1))
-                return std::vector<size_t>{};
-
-            result_shape.push_back(std::max(shape1, shape2));
+            if (a_shape == b_shape)
+                block_size *= a_shape;
         }
 
-        return result_shape;
+        size_t num_blocks = std::max(a.size(), b.size()) / block_size;
+
+        bool is_a_bigger = a.size() > b.size();
+
+        /* Performing a binary operation on two tensors. */
+        Tensor<Numeric> result(out_shape);
+        for (size_t block = 0; block < num_blocks; block++)
+        {
+            size_t block_offset = block * block_size;
+            for (size_t i = 0; i < block_size; i++)
+            {
+                size_t x = is_a_bigger ? block_offset + i : i;
+                size_t y = !is_a_bigger ? block_offset + i : i;
+                result[block_offset + i] = func(a[x], b[y]);
+            }
+        }
+
+        return result;
     }
 
 #pragma endregion
@@ -859,7 +865,7 @@ namespace tz
     template <typename Numeric>
     std::pair<size_t, char *> to_bytes(const Tensor<Numeric> &t)
     {
-        TZ_ASSERT(0 && "Not implemened.");
+        TZ_ASSERT(0 && "Not implemented.");
         return {0, nullptr};
     }
 

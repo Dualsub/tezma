@@ -33,9 +33,9 @@ size_t matmul_benchmark(size_t n, size_t mat_size, const Func &&function)
 int main(int argc, char const *argv[])
 {
     tz::seed(0);
-    size_t ms_conv = matmul_benchmark(1000, 32, [](auto a, auto b)
+    size_t ms_conv = matmul_benchmark(1000, 1024, [](auto a, auto b)
                                       { return tz::matmul(a, b); });
-    size_t ms_tiled = matmul_benchmark(1000, 32, [](auto a, auto b)
+    size_t ms_tiled = matmul_benchmark(1000, 1024, [](auto a, auto b)
                                        { return tz::matmul_tiled(a, b); });
 
     // std::cout << ms_conv << std::endl;
