@@ -12,7 +12,7 @@ namespace tz
         Function() = default;
         ~Function() = default;
 
-        virtual Tensor<Numeric> forward(const Tensor<Numeric> &t) const = 0;
-        virtual Tensor<Numeric> backward(const Tensor<Numeric> &t) const = 0;
+        virtual Tensor<Numeric> forward(const Tensor<Numeric> &t) = 0;
+        virtual Tensor<Numeric> backward(const Tensor<Numeric> &t) = 0;
     };
 }

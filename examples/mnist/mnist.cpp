@@ -45,7 +45,7 @@ int main(int argc, char const *argv[])
     std::cout << "Tiled:\t" << (mat_size * mat_size * 2 * mat_size) / (float(ms_tiled) * 1e3) << " GFLOP/S" << std::endl;
     std::cout << "Conv:\t"  << (mat_size * mat_size * 2 * mat_size) / (float(ms_conv)  * 1e3) << " GFLOP/S" << std::endl;
 
-    TZ_ASSERT(tz::matmul_tiled(a, b) == tz::matmul(a, b));
+    TZ_ASSERT(tz::matmul_tiled(a, b) == tz::matmul(a, b, 4));
 
     return 0;
 }

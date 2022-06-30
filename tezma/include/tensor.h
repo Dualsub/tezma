@@ -47,7 +47,8 @@ namespace tz
     public:
         Tensor() = default;
         ~Tensor() = default;
-
+        Tensor<Numeric> &operator=(const Tensor<Numeric> &) = default;
+        Tensor(const Tensor<Numeric> &) = default;
         /**
          * This function takes a list of numbers and creates a tensor with the shape of the list
          *
@@ -222,13 +223,6 @@ namespace tz
         Numeric *data() { return m_data.get(); }
 
         /**
-         * Return a const pointer to the data array.
-         *
-         * @return A pointer to the data.
-         */
-        const Numeric *data() const { return m_data.get(); }
-
-        /**
          * The function takes an output stream and a tensor as input, and returns the output stream
          * with the tensor's contents appended to it
          *
@@ -269,6 +263,33 @@ namespace tz
          */
         Numeric &operator[](size_t i) { return m_data.get()[i]; }
 
+        Numeric &operator[](const std::initializer_list<size_t> idxs)
+        {
+            TZ_ASSERT(idxs.size() == m_shape.size() && "Indexes not matching with shape.");
+
+            // Linear index into array.
+            size_t idx = 0;
+
+            // Loop count.
+            size_t j = 0;
+
+            // Size of the current block.
+            size_t block_size = m_size;
+
+            for (auto &i : idxs)
+            {
+                // The block size if one if the shape does not exist, so no divide in that case.
+                if (j < m_shape.size())
+                    block_size /= m_shape[j];
+
+                idx += i * block_size;
+
+                j++;
+            }
+
+            return m_data.get()[idx];
+        }
+
         Tensor<Numeric> slice(std::initializer_list<size_t> idxs) const
         {
             TZ_ASSERT(idxs.size() < m_shape.size() && "To many indexes.");
@@ -303,7 +324,7 @@ namespace tz
             return result;
         }
 
-        void set_slice(const std::initializer_list<size_t> idxs, const Tensor &slice) const
+        void set_slice(const std::initializer_list<size_t> idxs, Tensor &slice)
         {
             TZ_ASSERT(idxs.size() < m_shape.size() && "To many indexes.");
 
@@ -350,7 +371,7 @@ namespace tz
      * multiplied by the scalar.
      */
     template <typename Numeric>
-    Tensor<Numeric> operator*(Tensor<Numeric> &t, Numeric n)
+    Tensor<Numeric> operator*(const Tensor<Numeric> &t, Numeric n)
     {
         Tensor<Numeric> result(t.shape());
         for (size_t i = 0; i < t.size(); i++)
@@ -361,26 +382,89 @@ namespace tz
 
     /* Defining the multiplication operator for the Tensor class. */
     template <typename Numeric>
-    Tensor<Numeric> operator*(Numeric n, Tensor<Numeric> &t) { return t * n; }
+    Tensor<Numeric> operator*(Numeric n, const Tensor<Numeric> &t) { return t * n; }
     template <typename Numeric>
-    Tensor<Numeric> operator*(Tensor<Numeric> &t, size_t n) { return t * (Numeric)n; }
+    Tensor<Numeric> operator*(const Tensor<Numeric> &t, size_t n) { return t * (Numeric)n; }
     template <typename Numeric>
-    Tensor<Numeric> operator*(size_t n, Tensor<Numeric> &t) { return (Numeric)n * t; }
+    Tensor<Numeric> operator*(size_t n, const Tensor<Numeric> &t) { return (Numeric)n * t; }
 
     /**
-     * "Add two tensors together and return the result."
+     * Subtract two tensors and return the result.
+     *
+     *
+     * @param t1 The first tensor to subtract.
+     * @param t2 The tensor to subtract to the current tensor.
+     *
+     * @return Resulting tensor.
+     */
+    template <typename Numeric>
+    Tensor<Numeric> operator-(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    {
+        return broadcast(t1, t2, [](Numeric a, Numeric b)
+                         { return a - b; });
+    }
+
+    /**
+     * Add two tensors together and return the result.
      *
      *
      * @param t1 The first tensor to add.
      * @param t2 The tensor to add to the current tensor.
      *
-     * @return A new tensor with the same shape as the two input tensors.
+     * @return Resulting tensor.
      */
     template <typename Numeric>
     Tensor<Numeric> operator+(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
     {
-        return broadcast(t1, t2, [](Numeric a, Numeric b) { return a + b; });
+        return broadcast(t1, t2, [](Numeric a, Numeric b)
+                         { return a + b; });
     }
+
+
+    /**
+     * Multiply two tensors together and return the result.
+     *
+     *
+     * @param t1 The first tensor to multiply.
+     * @param t2 The tensor to multiply to the current tensor.
+     *
+     * @return Resulting tensor.
+     */
+    template <typename Numeric>
+    Tensor<Numeric> operator*(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    {
+        return broadcast(t1, t2, [](Numeric a, Numeric b) { return a * b; });
+    }
+
+
+    template <typename Numeric>
+    void operator-=(Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    {
+        t1 = t1 - t2;
+    }
+
+    template <typename Numeric>
+    void operator+=(Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    {
+        t1 = t1 + t2;
+    }
+
+    template <typename Numeric>
+    void operator*=(Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
+    {
+        t1 = t1 * t2;
+    }
+
+    template <typename Numeric>
+    Tensor<Numeric> pow(Tensor<Numeric> &t, size_t n)
+    {
+        Tensor<Numeric> result(t.shape());
+        for (size_t i = 0; i < t.size(); i++)
+            result[i] = (Numeric)std::pow(t[i], n);
+
+        return result;
+    }
+
 
     template <typename Numeric>
     Tensor<bool> operator<(const Tensor<Numeric> &t, float f)
@@ -423,6 +507,22 @@ namespace tz
                 ;
 
         return true;
+    }
+
+    template <typename Numeric>
+    Tensor<Numeric> transpose(Tensor<Numeric> &t)
+    {
+        TZ_ASSERT(t.order() == 2 && "Can only transpose matrices.");
+
+        Tensor<Numeric> result = zeros<Numeric>({t.shape(1), t.shape(0)});
+        for (size_t i = 0; i < t.shape(0); i++)
+        {
+            for (size_t j = 0; j < t.shape(1); j++)
+            {
+                result[{j, i}] = t[{i, j}];
+            }
+        }
+        return result;
     }
 
 #pragma endregion
@@ -608,6 +708,21 @@ namespace tz
     }
 
     /**
+     * It takes a list of sizes, and returns a tensor with those sizes, filled with zeros
+     *
+     * @param shape The shape of the tensor.
+     *
+     * @return A Tensor object.
+     */
+    template <typename Numeric>
+    Tensor<Numeric> zeros(const std::vector<size_t>& shape)
+    {
+        Tensor<Numeric> result(shape);
+        memset(result.data(), 0, result.size() * sizeof(Numeric));
+        return result;
+    }
+
+    /**
      * It creates a tensor with the given shape and fills it with random numbers
      *
      * @param shape The shape of the tensor.
@@ -615,7 +730,7 @@ namespace tz
      * @return A Tensor object.
      */
     template <typename Numeric>
-    Tensor<Numeric> rand(std::initializer_list<size_t> shape)
+    Tensor<Numeric> randu(std::initializer_list<size_t> shape)
     {
         Tensor<Numeric> result(shape);
         for (size_t i = 0; i < result.size(); i++)
@@ -699,10 +814,10 @@ namespace tz
      * @return A Tensor<Numeric>
      */
     template <typename Numeric>
-    Tensor<Numeric> matmul(Tensor<Numeric> &t1, Tensor<Numeric> &t2)
+    Tensor<Numeric> matmul(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
     {
         TZ_ASSERT((t1.order() == 2 && t2.order() == 2) && "Tensors are not matricies.");
-        TZ_ASSERT((t1.shape(1) == t1.shape(0)) && "Matricies dimmensions are incompatible.");
+        TZ_ASSERT((t1.shape(1) == t2.shape(0)) && "Matricies dimmensions are incompatible.");
 
         size_t rows = t1.shape(0);
         size_t cols = t2.shape(1);

@@ -13,12 +13,12 @@ namespace tz
         float m_learning_rate;
 
     public:
-        virtual Tensor<DType> forward(const Tensor<DType> &t) const override
+        virtual Tensor<DType> forward(const Tensor<DType> &t) override
         {
             return t;
         }
 
-        virtual Tensor<DType> backward(const Tensor<DType> &t) const override
+        virtual Tensor<DType> backward(const Tensor<DType> &t) override
         {
             return t;
         }
@@ -27,20 +27,43 @@ namespace tz
     class LinearLayer : public Function<DType>
     {
     public:
-        LinearLayer(float learning_rate = 0.01f) : m_learning_rate(learning_rate) {}
-
-    private:
-        DType m_learning_rate;
-
-    public:
-        virtual Tensor<DType> forward(const Tensor<DType> &t) const override
+        LinearLayer(size_t input_size, size_t output_size, float learning_rate = 0.01f)
+            : m_learning_rate(learning_rate)
         {
-            return t;
+            m_weights = tz::randn<DType>({output_size, input_size});
+            m_bias = tz::randn<DType>({output_size, 1});
         }
 
-        virtual Tensor<DType> backward(const Tensor<DType> &t) const override
+    private:
+        float m_learning_rate;
+        Tensor<DType> m_input;
+        Tensor<DType> m_weights;
+        Tensor<DType> m_bias;
+    public:
+        virtual Tensor<DType> forward(const Tensor<DType> &t) override
         {
-            return t;
+            m_input = t;
+            return matmul(m_weights, t) + m_bias;
+        }
+
+        virtual Tensor<DType> backward(const Tensor<DType> &t) override
+        {
+            auto weights_gradient = matmul(t, transpose(m_input));
+            auto input_gradient = matmul(transpose(m_weights), t);
+            m_weights = m_weights - (m_learning_rate * weights_gradient);
+            m_bias = m_bias - (m_learning_rate * t);
+
+            return input_gradient;
+        }
+
+        const Tensor<DType>& weights() const
+        {
+            return m_weights;
+        }
+
+        const Tensor<DType>& bias() const
+        {
+            return m_bias;
         }
     };
 }
