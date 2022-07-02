@@ -29,12 +29,12 @@ namespace tz
         MSELoss() = default;
         ~MSELoss() = default;
 
-        virtual DType forward(const Tensor<DType>& y_pred, const Tensor<DType>& y_true) override
+        virtual DType forward(const Tensor<DType>& y_true, const Tensor<DType>& y_pred) override
         {
             return mean(pow(y_true - y_pred, 2));
         }
 
-        virtual Tensor<DType> backward(const Tensor<DType>& y_pred, const Tensor<DType>& y_true) override
+        virtual Tensor<DType> backward(const Tensor<DType>& y_true, const Tensor<DType>& y_pred) override
         {
             DType factor = (2.0f/y_true.size());
             auto diff = y_pred - y_true;

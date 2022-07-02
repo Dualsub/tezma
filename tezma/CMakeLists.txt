@@ -6,7 +6,8 @@ enable_testing()
 
 add_library(tezma 
 src/tezma.cpp
-# src/network.cpp
+src/net.cpp
+src/tensor.cpp
 )
 target_include_directories(tezma PUBLIC include)
 

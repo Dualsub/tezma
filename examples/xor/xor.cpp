@@ -1,8 +1,7 @@
-#include "tezma.h"
-#include "layer.h"
-#include "loss.h"
-#include "tensor.h"
+#include "net.h"
 #include "activation.h"
+#include "layer.h"
+#include "serialization.h"
 #include <iostream>
 
 int main(int argc, char const *argv[])
@@ -20,64 +19,37 @@ int main(int argc, char const *argv[])
     });
     outputs.reshape({ 4, 1, 1 });
 
-    auto a1 = tz::Tanh();
-    auto a2 = tz::Tanh();
-    auto l1 = tz::LinearLayer(2, 3);
-    auto l2 = tz::LinearLayer(3, 1);
-    auto loss = tz::MSELoss();
-    float error = 0.0;
+    tz::Net net;
 
-    const size_t epochs = 10000;
-
-    for (int epoch = 0; epoch < epochs; epoch++)
-    {
-        for(size_t i = 0; i < inputs.shape(0); i++)
-        {
-            auto x = inputs.slice({i});
-            auto y = outputs.slice({i});
-            x = l1.forward(x);
-            x = a1.forward(x);
-            x = l2.forward(x);
-            x = a2.forward(x);
-
-            error += loss.forward(x, y);
-            auto grad = loss.backward(x, y);
-        
-            grad = a2.backward(grad);
-            grad = l2.backward(grad);
-            grad = a1.backward(grad);
-            grad = l1.backward(grad);
-        }
-
-        error /= inputs.shape(0);
-
-        std::cout << epoch+1 << "/" << epochs << " Error: " << error << std::endl;
-    }
-
-    // Print model results.
-    for(size_t i = 0; i < inputs.shape(0); i++)
-    {
-        auto input = inputs.slice({i});
-        auto output = outputs.slice({i});
-        auto x = input;
-        x = l1.forward(x);
-        x = a1.forward(x);
-        x = l2.forward(x);
-        x = a2.forward(x);
-        std::cout << (int)std::round(input[0]) << ", " << (int)std::round(input[1]) << " -> " << (int)std::round(x[0]) << std::endl;
-    }
-
-    // // Creating model
-    // size_t epochs = 10000;
+    net.add<tz::LinearLayer>(2, 3);
+    net.add<tz::Tanh>();
+    net.add<tz::LinearLayer>(3, 1);
+    net.add<tz::Tanh>();
     
-    // tz::Net<float> net;
+    // net.fit(inputs, outputs, tz::MSELoss(), 0.01f, 10000);
 
-    // net.add_layer(LinearLayer({2, 3}), Tanh());
-    // net.add_layer(LinearLayer({3, 1}), Tanh());
-
-    // net.train(inputs, outputs, MSELoss(), 0.1, epochs);
+    // Print the predictions.
+    for (size_t i = 0; i < inputs.shape(0); i++)
+    {
+        tz::Tensor<float> input = inputs.slice({ i });
+        tz::Tensor<float> output = net(input);
+        std::cout << input[0] << ", " << input[1] << " -> " << (int)std::round(output[0]) << std::endl;
+    }
 
     // net.saveas("nets/xor_net.tzn");
+    {
+        tz::SerializationContext context;
+        tz::serialize(inputs, context);
+        context.save("xor_inputs.tzn");
+    }
+
+    {
+        tz::SerializationContext context;
+        context.open("xor_inputs.tzn");
+        auto d = tz::deserialize<float>(context);
+        std::cout << d << std::endl;
+    }
+
 
     return 0;
 }

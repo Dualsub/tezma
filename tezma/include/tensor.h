@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tezma.h"
 #include <initializer_list>
 #include <vector>
 #include <memory>
@@ -9,7 +10,6 @@
 #include <math.h>
 #include <string>
 #include <sstream>
-#include "tezma.h"
 
 #ifdef max
 #undef max
@@ -22,14 +22,10 @@
 namespace tz
 {
 
-#pragma region State
+#pragma region Random
 
-    static std::default_random_engine rng_engine;
-
-    void seed(unsigned int seed)
-    {
-        rng_engine.seed(seed);
-    }
+    extern std::default_random_engine rng_engine;
+    void seed(unsigned int seed);
 
 #pragma endregion
 
@@ -222,6 +218,8 @@ namespace tz
          */
         Numeric *data() { return m_data.get(); }
 
+        const Numeric *data() const { return m_data.get(); }
+
         /**
          * The function takes an output stream and a tensor as input, and returns the output stream
          * with the tensor's contents appended to it
@@ -230,18 +228,43 @@ namespace tz
          */
         friend std::ostream &operator<<(std::ostream &os, const Tensor<Numeric> &t)
         {
-            os << "[";
-
-            size_t size = t.size();
-            if (size > 0)
+            if(t.order() == 2)
             {
-                os << t[0];
-                for (size_t i = 1; i < size; i++)
+                os << "[";
+                for (size_t i = 0; i < t.shape(0); i++)
                 {
-                    os << ", " << t[i];
+                    os << "[";
+                    size_t size = t.size();
+                    if (size > 0)
+                    {
+                        os << t[0];
+                        for (size_t i = 1; i < t.shape(1); i++)
+                        {
+                            os << ", " << t[i];
+                        }
+                    }
+                    os << "],";
+                    os << "\n";
                 }
+                os << "]";
+            } 
+            else
+            {
+                os << "[";
+
+                size_t size = t.size();
+                if (size > 0)
+                {
+                    os << t[0];
+                    for (size_t i = 1; i < size; i++)
+                    {
+                        os << ", " << t[i];
+                    }
+                }
+                os << "]";
             }
-            os << "]";
+
+
 
             return os;
         }
