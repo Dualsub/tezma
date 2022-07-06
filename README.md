@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/geohot/tinygrad/master/docs/logo.png">
+  <img src="./tezma-logo.svg">
 </p>
 
---------------------------------------------------------------------
+<!-- -------------------------------------------------------------------- -->
 
 Tezma is a small C++ machine learning framework, created for no reason. It includes the following features:
 - Small tensor math library(mirroring NumPy)
