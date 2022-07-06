@@ -57,12 +57,14 @@ int main(int argc, char const *argv[])
     // Creating model
     size_t epochs = 10000;
     
-    tz::Net<float> net;
+    tz::Net net;
 
-    net.add_layer(LinearLayer({2, 3}), Tanh());
-    net.add_layer(LinearLayer({3, 1}), Tanh());
-
-    net.train(inputs, outputs, MSELoss(), 0.1, epochs);
+    net.add<tz::LinearLayer>(2, 3);
+    net.add<tz::Tanh>();
+    net.add<tz::LinearLayer>(3, 1);
+    net.add<tz::Tanh>();
+    
+    net.fit(inputs, outputs, MSELoss(), 0.1, epochs);
 
     net.saveas("nets/xor_net.tzn");
 
@@ -88,11 +90,12 @@ int main(int argc, char const *argv[])
     
     tz::Net<float> net;
 
-    net.add_layer(LinearLayer({32, 32}), Tanh());
-    net.add_layer(LinearLayer({12, 12}), Tanh());
-    net.add_layer(LinearLayer({10, 1}), Tanh());
+    net.add<tz::LinearLayer>(28 * 28, 40);
+    net.add<tz::Tanh>();
+    net.add<tz::LinearLayer>(40, 10);
+    net.add<tz::Tanh>();
 
-    net.train(inputs, outputs, AdamOptimizer(), 0.1, epochs);
+    net.fit(inputs, outputs, AdamOptimizer(), 0.1, epochs);
 
     net.saveas("nets/mnist_net.tzn");
 

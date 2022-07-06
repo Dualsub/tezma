@@ -40,4 +40,39 @@ namespace tz
         }
     };
 
+    
+    class ReLU : public Function<DType>
+    {
+    private:
+        Tensor<DType> m_inputs;
+    public:
+        ReLU() = default;
+        ~ReLU() = default;
+
+
+        Tensor<DType> forward(const Tensor<DType> &t) override
+        {
+            m_inputs = t;
+            Tensor<DType> result(t.shape());
+            for (size_t i = 0; i < t.size(); i++)
+            {
+                result[i] = (t[i] > 0) ? t[i] : 0;
+            }
+            return result;
+        }
+
+        Tensor<DType> backward(const Tensor<DType> &t) override
+        {
+            Tensor<DType> result(m_inputs.shape());
+            for (size_t i = 0; i < m_inputs.size(); i++)
+            {
+                result[i] = (m_inputs[i] > 0) ? (DType)1 : (DType)0;
+            }
+
+            result *= t;
+
+            return result;
+        }
+    };
+
 }

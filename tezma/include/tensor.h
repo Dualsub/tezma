@@ -29,7 +29,32 @@ namespace tz
 
 #pragma endregion
 
+#pragma region Shape
+
+    using Shape = std::vector<size_t>;
+
+    std::ostream &operator<<(std::ostream &out, const tz::Shape &s);
+
+#pragma endregion
+
 #pragma region Class
+
+    struct Range
+    {
+        size_t start;
+        size_t end;
+
+        Range(size_t start, size_t end)
+            : start(start), end(end)
+        {
+            TZ_ASSERT(start <= end && "Invalid range.");
+        }
+
+        constexpr size_t size() const
+        {
+            return end - start;
+        }
+    };
 
     /* A class that represents a multi-dimensional array of numbers */
     template <typename Numeric>
@@ -37,7 +62,7 @@ namespace tz
     {
     private:
         std::shared_ptr<Numeric> m_data;
-        std::vector<size_t> m_shape;
+        Shape m_shape;
         size_t m_size;
 
     public:
@@ -120,7 +145,7 @@ namespace tz
          *
          * @param shape The shape of the tensor.
          */
-        Tensor(const std::vector<size_t> &shape)
+        Tensor(const Shape &shape)
         {
             m_shape = shape;
 
@@ -152,7 +177,7 @@ namespace tz
          *
          * @param shape The new shape of the tensor.
          */
-        void reshape(const std::vector<size_t> &shape)
+        void reshape(const Shape &shape)
         {
             size_t size = 1;
             for (auto s : shape)
@@ -186,7 +211,7 @@ namespace tz
          *
          * @return The shape of the tensor.
          */
-        const std::vector<size_t> &shape() const { return m_shape; }
+        const Shape &shape() const { return m_shape; }
 
         /**
          * `shape` returns the size of the `i`th dimension of the tensor
@@ -228,7 +253,7 @@ namespace tz
          */
         friend std::ostream &operator<<(std::ostream &os, const Tensor<Numeric> &t)
         {
-            if(t.order() == 2)
+            if (t.order() == 2)
             {
                 os << "[";
                 for (size_t i = 0; i < t.shape(0); i++)
@@ -247,7 +272,7 @@ namespace tz
                     os << "\n";
                 }
                 os << "]";
-            } 
+            }
             else
             {
                 os << "[";
@@ -263,8 +288,6 @@ namespace tz
                 }
                 os << "]";
             }
-
-
 
             return os;
         }
@@ -313,11 +336,23 @@ namespace tz
             return m_data.get()[idx];
         }
 
+        Tensor<Numeric> operator[](const Range range)
+        {
+            auto shape = m_shape;
+            shape[0] = range.size();
+            Tensor<Numeric> result(shape);
+            auto block_size = result.size() / shape[0];
+            // Copy the data.
+            std::copy(m_data.get() + range.start * block_size, m_data.get() + range.end * block_size, result.data());
+
+            return result;
+        }
+
         Tensor<Numeric> slice(std::initializer_list<size_t> idxs) const
         {
             TZ_ASSERT(idxs.size() < m_shape.size() && "To many indexes.");
 
-            Tensor<Numeric> result(std::vector<size_t>(m_shape.begin() + idxs.size(), m_shape.end()));
+            Tensor<Numeric> result(Shape(m_shape.begin() + idxs.size(), m_shape.end()));
 
             // Linear index into array.
             size_t idx = 0;
@@ -443,7 +478,6 @@ namespace tz
                          { return a + b; });
     }
 
-
     /**
      * Multiply two tensors together and return the result.
      *
@@ -456,9 +490,9 @@ namespace tz
     template <typename Numeric>
     Tensor<Numeric> operator*(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
     {
-        return broadcast(t1, t2, [](Numeric a, Numeric b) { return a * b; });
+        return broadcast(t1, t2, [](Numeric a, Numeric b)
+                         { return a * b; });
     }
-
 
     template <typename Numeric>
     void operator-=(Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
@@ -487,7 +521,6 @@ namespace tz
 
         return result;
     }
-
 
     template <typename Numeric>
     Tensor<bool> operator<(const Tensor<Numeric> &t, float f)
@@ -738,7 +771,7 @@ namespace tz
      * @return A Tensor object.
      */
     template <typename Numeric>
-    Tensor<Numeric> zeros(const std::vector<size_t>& shape)
+    Tensor<Numeric> zeros(const Shape &shape)
     {
         Tensor<Numeric> result(shape);
         memset(result.data(), 0, result.size() * sizeof(Numeric));
@@ -809,7 +842,7 @@ namespace tz
         else
         {
             TZ_ASSERT(t.shape(axis) == 1 && "Axis cannot be squeezed unless it is not 1.");
-            std::vector<size_t> new_shape;
+            Shape new_shape;
             for (size_t i = 0; i < t.order(); i++)
             {
                 if (i != axis)
@@ -825,6 +858,18 @@ namespace tz
     template <typename Numeric>
     Tensor<Numeric> dot(const Tensor<Numeric> &t1, const Tensor<Numeric> &t2)
     {
+        static size_t biggest = 0;
+        size_t m = t1.shape(0);
+        size_t k = t1.shape(1);
+        size_t n = t1.shape(1);
+
+        if(m+n+k > biggest)
+        {
+            biggest = m+n+k;
+            std::cout << "Biggest: " << m << "x" << k << " * " << k << "x" << n << std::endl;
+        }
+
+        return matmul(t1, t2);
     }
 
     /**
@@ -925,7 +970,7 @@ namespace tz
 
         /* Calculating the shape of the output tensor. */
         size_t block_size = 1;
-        std::vector<size_t> out_shape;
+        Shape out_shape;
 
         size_t P = std::max(a.order(), b.order());
         for (size_t i = 0; i < P; i++)

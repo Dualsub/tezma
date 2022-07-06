@@ -5,35 +5,49 @@
 namespace tz
 {
     template <typename Numeric>
-    class Parameter
+    class Optimizer
     {
-        Tensor<Numeric> m_value;
-        Tensor<Numeric> m_grad;
+    protected:
+        float m_learning_rate{0.0f};
 
     public:
-        Parameter(const Tensor<Numeric>& value, const Tensor<Numeric>& grad)
-            : m_value(value), m_grad(grad)
-        {
-        }
+        Optimizer() = default;
+        Optimizer(float m_learning_rate) : m_learning_rate(m_learning_rate) {}
+        ~Optimizer() = default;
 
-        const Tensor<Numeric>& value() const
-        {
-            return m_value;
-        }
+        virtual void step(std::vector<Parameter<Numeric>> &params) = 0;
+        void set_learning_rate(float learning_rate) { m_learning_rate = learning_rate; }
+    };
 
-        Tensor<Numeric>& value()
-        {
-            return m_value;
-        }
+    using DType = float;
 
-        const Tensor<Numeric>& grad() const
-        {
-            return m_grad;
-        }
+    class SGDOptimizer : public Optimizer<DType>
+    {
+    public:
+        SGDOptimizer() = default;
+        SGDOptimizer(float m_learning_rate) : Optimizer(m_learning_rate) {}
+        ~SGDOptimizer() = default;
 
-        Tensor<Numeric>& grad()
+        virtual void step(std::vector<Parameter<DType>> &params) override
         {
-            return m_grad;
+            TZ_ASSERT((params.size() > 0 && m_learning_rate > 0.0f) && "SGDOptimizer::step: invalid params");
+            for (auto &param : params)
+            {
+                param.value() -= param.grad() * m_learning_rate;
+            }
         }
     };
+
+    class AdamOptimizer : public Optimizer<DType>
+    {
+    public:
+        // Implement Adam optimizer step.
+        // https://arxiv.org/pdf/1412.6980.pdf
+        // https://www.tensorflow.org/api_docs/python/tf/train/AdamOptimizer
+        virtual void step(std::vector<Parameter<DType>> &params) override
+        {
+            TZ_ASSERT(0 && "AdamOptimizer::step() is not implemented.");
+        }
+    };
+
 };

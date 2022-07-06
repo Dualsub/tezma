@@ -27,8 +27,8 @@ def main():
     print("Done.")
     # preprocess data
     print("Preprocessing data...")
-    x_train, y_train = preprocess_data(x_train, y_train, 6_000)
-    x_test, y_test = preprocess_data(x_test, y_test, 1_000)
+    x_train, y_train = preprocess_data(x_train, y_train, 60_000)
+    x_test, y_test = preprocess_data(x_test, y_test, 10_000)
     print("Done.")
     # save data to files
     print("Saving data to files...")

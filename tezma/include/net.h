@@ -15,12 +15,13 @@ namespace tz
     private:
         std::vector<FunctionPtr<DType>> m_layers;
         std::vector<Parameter<DType>> m_parameters;
+
     public:
 
         Net() = default;
         ~Net() = default;
 
-        void fit(Tensor<DType>& inputs, Tensor<DType>& outputs, LossFunction<DType>& loss_func, float learning_rate, size_t epochs);
+        void fit(Tensor<DType> &inputs, Tensor<DType> &outputs, LossFunction<DType> &loss_func, Optimizer<DType> &optimizer, float learning_rate, size_t epochs, size_t batch_size = 1);
         void back_prop(const Tensor<DType>& output, const Tensor<DType>& output_pred, LossFunction<DType>& loss_func);
         float eval(Tensor<DType>& inputs, Tensor<DType>& outputs, LossFunction<DType>& loss_func);
 
