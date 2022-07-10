@@ -14,15 +14,21 @@ int main(int argc, char const *argv[])
     std::cout << "Running MNIST Example." << std::endl;
 
     // Load MNIST dataset.
-    std::cout << "Loading MNIST dataset." << std::endl;
+    std::cout << "Loading MNIST dataset..." << std::endl;
     tz::Tensor<float> x_train = tz::load<float>("C:/dev/repos/tezma/datasets/mnist/x_train.tzn");
     tz::Tensor<float> y_train = tz::load<float>("C:/dev/repos/tezma/datasets/mnist/y_train.tzn");
-    
+    std::cout << "Done. "
+              << "Traning set size: " << x_train.shape(0) << std::endl;
+
     // Create a network with a single hidden layer.
     std::cout << "Creating network." << std::endl;
     tz::Net net;
 
     net.add<tz::LinearLayer>(28 * 28, 40);
+    net.add<tz::Tanh>();
+    net.add<tz::LinearLayer>(40, 40);
+    net.add<tz::Tanh>();
+    net.add<tz::LinearLayer>(40, 40);
     net.add<tz::Tanh>();
     net.add<tz::LinearLayer>(40, 10);
     net.add<tz::Tanh>();
@@ -42,13 +48,13 @@ int main(int argc, char const *argv[])
     size_t num_right = 0;
     for (size_t i = 0; i < count; i++)
     {
-        tz::Tensor<float> x = x_test.slice({ i });
-        tz::Tensor<float> y = y_test.slice({ i });
-        x.reshape({1, x.shape(0) });
-        y.reshape({1, y.shape(0) });
+        tz::Tensor<float> x = x_test.slice({i});
+        tz::Tensor<float> y = y_test.slice({i});
+        x.reshape({1, x.shape(0)});
+        y.reshape({1, y.shape(0)});
         tz::Tensor<float> y_pred = net(x);
-        size_t pred = tz::argmax(y_pred)+1;
-        size_t actual = tz::argmax(y)+1;
+        size_t pred = tz::argmax(y_pred) + 1;
+        size_t actual = tz::argmax(y) + 1;
         num_right += pred == actual;
         // std::cout << actual << " -> " << pred << std::endl;
     }

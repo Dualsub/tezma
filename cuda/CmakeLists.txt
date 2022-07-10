@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.17)
+
+project(cuda_ops CUDA)
+
+find_package(CUDA QUIET REQUIRED)
+
+# Make CUDA executable and set the CUDA_HOST_COMPILER to the host compiler.
+set(CUDA_HOST_COMPILER "${CMAKE_C_COMPILER}")
+set(CUDA_HOST_LINKER "${CMAKE_C_LINKER}")
+
+add_library(cuda_ops
+    src/cuda_ops_impl.cu
+)
+
+target_include_directories(cuda_ops PUBLIC include)
+target_link_libraries(cuda_ops PRIVATE ${CUDA_LIBRARIES})

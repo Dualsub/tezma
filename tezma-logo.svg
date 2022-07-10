@@ -66,8 +66,7 @@
                 font-size: 100px;
                 fill: #fff;
                 text-anchor: middle;
-                dominant-baseline: central;
-
+                dominant-baseline: middle;
             }
 
             .bg {
@@ -76,6 +75,6 @@
         </style>
     </defs>
     <text x="50%" y="50%" class="text">
-        <tspan>tezma</tspan>
+        tezma
     </text>
 </svg>

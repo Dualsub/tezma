@@ -1,3 +1,4 @@
+#include "tezma.h"
 #include "tensor.h"
 #include "function.h"
 #include "layer.h"
