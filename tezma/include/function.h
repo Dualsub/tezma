@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "tezma.h"
 #include "tensor.h"
 
 namespace tz

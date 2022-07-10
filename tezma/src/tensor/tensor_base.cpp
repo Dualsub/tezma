@@ -1,4 +1,4 @@
-#include "tensor.h"
+#include "tensor/tensor_base.h"
 
 namespace tz
 {

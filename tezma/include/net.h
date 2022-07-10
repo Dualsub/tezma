@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include "tezma.h"
 #include "tensor.h"
 #include "layer.h"
 #include "function.h"

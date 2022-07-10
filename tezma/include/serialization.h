@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tezma.h"
 #include "tensor.h"
 #include <iostream>
 #include <fstream>
