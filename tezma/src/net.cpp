@@ -5,15 +5,16 @@
 namespace tz
 {
     /**
-     * > This function takes in a set of inputs and outputs, a loss function, a learning rate, and the
-     * number of epochs to train for. It then loops through the inputs and outputs, calculates the
-     * loss, and backpropagates the error
-     *
+     * > This function takes in a set of inputs and outputs, a loss function, an optimizer, a learning
+     * rate, the number of epochs, and the batch size, and then trains the network
+     * 
      * @param inputs The input data.
      * @param outputs The expected output of the network.
      * @param loss_func The loss function to use.
-     * @param learning_rate The learning rate of the network.
-     * @param epochs The number of times the network will be trained on the data.
+     * @param optimizer The optimizer to use.
+     * @param learning_rate The learning rate of the optimizer.
+     * @param epochs The number of times the network will see the entire dataset.
+     * @param batch_size The number of samples to use in each batch.
      */
     void Net::fit(Tensor<DType> &inputs, Tensor<DType> &outputs, LossFunction<DType> &loss_func, Optimizer<DType> &optimizer, float learning_rate, size_t epochs, size_t batch_size)
     {
@@ -51,7 +52,7 @@ namespace tz
             auto epoch_end = std::chrono::high_resolution_clock::now();
 
             err /= inputs.shape(0);
-            std::cout << "Epoch: " << e << " Error: " << err << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(epoch_end - epoch_start).count() << " ms" << std::endl;
+            std::cout << "Epoch: " << e+1 << " Error: " << err << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(epoch_end - epoch_start).count() << " ms" << std::endl;
         }
 
         auto end = std::chrono::high_resolution_clock::now();

@@ -434,6 +434,27 @@ namespace tz
         return result;
     }
 
+    /**
+     * It creates a tensor of the given shape, and fills it with random numbers drawn from a normal
+     * distribution with mean 0 and standard deviation 1
+     *
+     * @param shape The shape of the tensor.
+     *
+     * @return A tensor of random numbers.
+     */
+    template <typename Numeric>
+    Tensor<Numeric> randn(const Shape &shape)
+    {
+        std::normal_distribution<Numeric> d{0, 1};
+        Tensor<Numeric> result(shape);
+        for (size_t i = 0; i < result.size(); i++)
+        {
+            result[i] = d(rng_engine);
+        }
+
+        return result;
+    }
+
 #pragma endregion
 
 #pragma region Operations
